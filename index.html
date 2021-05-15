@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>eatsygo</title>
+		<link rel="stylesheet" type="text/css" href="index.css"/>
+		<link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.13.0/css/all.css">
+		<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+	</head>
+	<body>
+		<div id="ios">
+			<div id="screen">
+				<!-- closest restaurants screen -->
+				<div id="closest-rstr" style="display: block; opacity: 1;">
+					<div id="topbar">
+						<div id="topbar-header">Search Closest Restaurant(s)</div>
+					</div>
+
+					<div id="closest-rstr-inner">
+						<div v-for="rstr in rstrs" class="rstr" v-on:click="swipeScreen()">
+							<div class="rstr-name">{{ rstr.name }}</div>
+							<div class="rstr-logo"><img :src="rstr.logo"/></div>
+							<div class="rstr-infos">
+								<div class="rstr-info"><strong>Distance:</strong> {{ rstr.infos.distance }}km from your location</div>
+								<div class="rstr-info"><strong>Opening Hours:</strong> {{ rstr.infos.hours }}</div>
+								<div class="rstr-info"><strong>Closes in {{ rstr.infos.close }}</strong></div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- end closest restaurants screen -->
+
+				<!-- restaurant information screen -->
+				<div id="rstr-info" style="display: none; opacity: 0;">
+					<div id="topbar">
+						<div id="topbar-back" v-on:click="goBack"><i class="fas fa-arrow-left"></i></div>
+						<div id="topbar-header">Restaurant Information</div>
+					</div>
+					<div id="rstr-info-inner">
+						<div class="items">
+							<div class="items-header">New item(s)</div>
+							<div class="item-row" v-for="row in display(rstr_info.items.news)">
+								<div class="item" v-for="new_item in row" v-on:click="seeItem('new', new_item.id)">
+									<div class="item-samplephoto">
+										<img :src="new_item.samplephoto"/>
+									</div>
+									<div class="item-name">{{ new_item.name }}</div>
+									<div class="item-price">$ {{ new_item.price }}</div>
+									<div class="item-numpurchased">{{ new_item.numpurchased }}</div>
+								</div>
+							</div>
+						</div>
+						<div class="items">
+							<div class="items-header">Special(s)</div>
+							<div class="item-row" v-for="row in display(rstr_info.items.specials)">
+								<div class="item" v-for="special in row" v-on:click="seeItem('special', special.id)">
+									<div class="item-samplephoto">
+										<img :src="special.samplephoto"/>
+									</div>
+									<div class="item-name">{{ special.name }}</div>
+									<div class="item-price">$ {{ special.price }}</div>
+									<div class="item-numpurchased">{{ special.numpurchased }}</div>
+								</div>
+							</div>
+						</div>
+						<div class="items">
+							<div class="items-header">Main(s)</div>
+							<div class="item-row" v-for="row in display(rstr_info.items.mains)">
+								<div class="item" v-for="main in row" v-on:click="seeItem('main', main.id)">
+									<div class="item-samplephoto">
+										<img :src="main.samplephoto"/>
+									</div>
+									<div class="item-name">{{ main.name }}</div>
+									<div class="item-price">$ {{ main.price }}</div>
+									<div class="item-numpurchased">{{ main.numpurchased }}</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- end restaurant information screen -->
+
+				<!-- item information -->
+				<div id="item-info" style="display: none; opacity: 0;">
+					<div id="topbar">
+						<div id="topbar-back" v-on:click="goBack"><i class="fas fa-arrow-left"></i></div>
+						<div id="topbar-header">Item Information</div>
+					</div>
+					<div id="item-info-inner">
+						<div id="item-info-samplephoto">
+							<img src=""/>
+						</div>
+						<div id="item-info-name">{{ item_info.name }}</div>
+						<div id="item-info-infos">
+							<div class="item-info-info" v-for="moreinfo in item_info.moreinfos">
+								<strong>{{ moreinfo.name }}</strong>:
+								{{ moreinfo.info }}
+							</div>
+							<div class="item-info-info"><strong>Price</strong>: $ {{ item_info.price }}</div>
+						</div>
+						<div id="item-info-addons">
+							
+							<div class="item-info-addons-choice" v-for="choice in item_info.addons.choices">
+								<!-- if options -->
+								<div class="choice-option-box" v-if="typeof(choice.options) != 'undefined'">
+									<div class="choice-options-name">{{ choice.name }}</div>
+									<div class="choice-options">
+										<div class="choice-option" v-for="option in choice.options">
+											<div :class="'choice-option-check' + (choice.selected == option ? 'ed' : '')" v-on:click="choice.selected = option"></div>
+											<div class="choice-option-name">{{ option }}</div>
+										</div>
+									</div>
+								</div>
+								<!-- end if options -->
+
+								<!-- if amount -->
+								<div class="choice-amount-box" v-if="typeof(choice.amount) != 'undefined'">
+									<div class="choice-amount-name">{{ choice.name }}</div>
+									<div class="choice-amount-control">
+										<div class="choice-subtract" v-on:click="choice.amount > 0 ? choice.amount -= 1 : 0">-</div>
+										<div class="choice-amount-header">{{ choice.amount }}</div>
+										<div class="choice-add" v-on:click="choice.amount += 1">+</div>
+									</div>
+								</div>
+								<!-- end if amount -->
+
+								<!-- if percentage -->
+								<div class="choice-percentage-box" v-if="typeof(choice.percentage) != 'undefined'">
+									<div class="choice-amount-name">{{ choice.name }}</div>
+									<div class="choice-percentage-control">
+										<div class="choice-subtract" v-on:click="choice.percentage > 0 ? choice.percentage -= 10 : 0">-</div>
+										<div class="choice-percentage-header">{{ choice.percentage }}%</div>
+										<div class="choice-add" v-on:click="choice.percentage += 10">+</div>
+									</div>
+								</div>
+								<!-- end if percentage -->
+							</div>
+						</div>
+						<div id="item-info-addtoorder" v-on:click="orderItem">Order Item</div>
+					</div>
+				</div>
+				<!-- end item information -->
+
+				<!-- global -->
+				<div id="show-order" v-on:click="openOrder()" style="display: none; opacity: 0;">
+					<div id="show-order-icon">
+						<i class="fas fa-shopping-cart"></i>
+					</div>
+					<div id="order-num">{{ orders.items.length }}</div>
+				</div>
+				<!-- end global -->
+
+				<!-- hidden boxes -->
+				<div id="hidden-box" v-on:click="hideHiddenBox" style="display: none; opacity: 0;">
+					<div id="order-box">
+						<div id="order-header">Your Order(s)</div>
+
+						<div id="order-list">
+							<div v-for="row in display(orders.items)">
+								<div class="order" v-for="order in row">
+									<div class="order-samplephoto">
+										<img :src="order.samplephoto"/>
+									</div>
+									<div class="order-infos">
+										<div class="order-info" v-for="info in order.infos">
+											{{ info.name ? info.name + ': ' : '' }}
+											{{ info.info }}
+											{{ info.type == 'percentage' ? '%' : '' }}
+										</div>
+									</div>
+									<div class="order-price">$ {{ order.price }}</div>
+								</div>
+							</div>
+						</div>
+
+						<div id="order-status">Total: $ {{ orders.cost }}</div>
+						<div id="order-paynow" v-on:click="swipeScreen()">Pay now</div>
+					</div>
+				</div>
+				<!-- end hidden boxes -->
+
+				<!-- order for friends -->
+				<div id="order-for-friends" style="display: none; opacity: 0;">
+					<div id="topbar">
+						<div id="topbar-back" v-on:click="goBack"><i class="fas fa-arrow-left"></i></div>
+						<div id="topbar-header">Order for friend(s)</div>
+					</div>
+					<div id="friends-box">
+						<div id="friends-add">+ <i class="fas fa-user"></i></div>
+
+						<div id="friends-list">
+							<div class="friends-row" v-for="row in display(friends.friendslist)">
+								<div :class="friends.selected.id == friend.id ? 'friend-selected' : 'friend'" v-for="friend in row" v-on:click="selectFriend(friend)">
+									<div class="friend-info-row">
+										<div class="friend-id">#{{ friend.id }}</div>
+										<div class="friend-name">{{ friend.name }}</div>
+									</div>
+									<div class="friend-numpurchasing">{{ friend.numpurchasing }}</div>
+								</div>
+							</div>
+						</div>
+
+						<div v-if="!friends.selected.name">
+							<div id="unselect-friend">Select a friend to choose the orders they will pay for</div>
+						</div>
+						<div v-if="friends.selected.name">
+							<div id="selected-friend">Selecting {{ friends.selected.name }}'s order(s)</div>
+
+							<div id="friends-orders">
+								<div id="friends-order-list">
+									<div class="friend-order-row" v-for="row in display(orders.items)">
+										<div :class="'friend-order-' + (friends.friendslist[friends.selected.id].orders.indexOf(order.id) > -1 ? 'selected' : 'unselect')" v-for="order in row" v-on:click="addToFriendOrders(order.id)">
+											<div class="friend-order-samplephoto">
+												<img :src="order.samplephoto"/>
+											</div>
+											<div class="friend-order-infos">
+												<div class="friend-order-info" v-for="info in order.infos">
+												{{ info.name ? info.name + ': ' : '' }}
+												{{ info.info }}
+												{{ info.type == 'percentage' ? '%' : '' }}
+											</div>
+											</div>
+											<div class="friend-order-price">$ {{ order.price }}</div>
+										</div>
+									</div>
+								</div>
+
+								<div id="friends-order-status">Total: $ {{ orders.cost }}</div>
+								<div id="friends-order-getitems">Get Item(s)</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- end order for friends -->
+			</div>
+		</div>
+
+		<script type="text/javascript">
+			var app = new Vue({
+				el: '#screen',
+				data: {
+					screens: ["closest-rstr", "rstr-info", "item-info", "order-for-friends"],
+					screenstate: "closest-rstr",
+					rstrs: [
+						{ 
+							id: 0, 
+							name: "ChaTime", 
+							logo: "", 
+							infos: { 
+								distance: 2.5, 
+								hours: "9am - 12am, Mon - Sun", 
+								close: "4 hours"
+							},
+							coordinates: { longitude: -79.416590, latitude: 43.700120 }
+						}
+					],
+					rstr_info: {
+						items: {
+							news: [
+								{ id: 0, name: "drink 1", samplephoto: "", price: 6.49, numpurchased: 45 },
+								{ id: 1, name: "drink 2", samplephoto: "", price: 8.49, numpurchased: 23 },
+								{ id: 2, name: "drink 3", samplephoto: "", price: 4.49, numpurchased: 56 }
+							],
+							specials: [
+								{ id: 0, name: "drink 4", samplephoto: "", price: 6.49, numpurchased: 45 },
+								{ id: 1, name: "drink 5", samplephoto: "", price: 8.49, numpurchased: 23 },
+								{ id: 2, name: "drink 6", samplephoto: "", price: 4.49, numpurchased: 56 }
+							],
+							mains: [
+								{ id: 0, name: "drink 7", samplephoto: "", price: 6.49, numpurchased: 45 },
+								{ id: 1, name: "drink 8", samplephoto: "", price: 8.49, numpurchased: 23 },
+								{ id: 2, name: "drink 9", samplephoto: "", price: 4.49, numpurchased: 56 }
+							]
+						}
+					},
+					item_info: {
+						name: 'drink 1',
+						samplephoto: '',
+						price: 6.49,
+						moreinfos: [
+							{
+								name: "Nutrition",
+								info: "this is the nutrition"
+							}
+						],
+						addons: {
+							choices: [
+								{
+									name: "Size",
+									options: ["Large", "Regular"],
+									selected: "Large"
+								},
+								{
+									name: "Topping",
+									options: ["Glass Jelly", "Pearls"],
+									selected: "Pearls"
+								},
+								{
+									name: "Sugar",
+									percentage: 12
+								},
+								{
+									name: "Cream",
+									amount: 5
+								}
+							]
+						}
+					},
+					orders: {
+						items: [
+							{ id: 0, samplephoto: "", infos: [{ name: '', info: 'drink 1' }, { name: 'Topping', info: 'Pearls' }, { name: 'Sugar', info: 80, type: 'percentage' }, { name: 'Ice', info: 'Less' }], price: 6.49 },
+							{ id: 1, samplephoto: "", infos: [{ name: '', info: 'drink 2' }, { name: 'Topping', info: 'Pearls' }, { name: 'Sugar', info: 80, type: 'percentage' }, { name: 'Ice', info: 'Less' }], price: 6.49 },
+							{ id: 2, samplephoto: "", infos: [{ name: '', info: 'drink 3' }, { name: 'Topping', info: 'Pearls' }, { name: 'Sugar', info: 80, type: 'percentage' }, { name: 'Ice', info: 'Less' }], price: 6.49 }
+						],
+						cost: 0
+					},
+					friends: {
+						friendslist: [
+							{ id: 0, name: "user 1", numpurchasing: 0, orders: [] },
+							{ id: 1, name: "user 2", numpurchasing: 0, orders: [] },
+							{ id: 2, name: "user 3", numpurchasing: 0, orders: [] },
+							{ id: 3, name: "user 4", numpurchasing: 0, orders: [] },
+							{ id: 4, name: "user 5", numpurchasing: 0, orders: [] },
+							{ id: 5, name: "user 6", numpurchasing: 0, orders: [] },
+							{ id: 6, name: "user 7", numpurchasing: 0, orders: [] },
+							{ id: 7, name: "user 8", numpurchasing: 0, orders: [] },
+							{ id: 8, name: "user 9", numpurchasing: 0, orders: [] }
+						],
+						selected: { id: -1, name: "" },
+					}
+				},
+				methods: {
+					swipeScreen: function () {
+						var { screenstate } = this
+						var currIndex = this.screens.indexOf(screenstate)
+						var nextIndex = currIndex + 1
+						var currScreen = this.screens[currIndex]
+						var nextScreen = this.screens[nextIndex]
+
+						this.screenstate = nextScreen
+
+						document.getElementById(currScreen).style.animation = "swipeScreen 0.5s"
+						document.getElementById(nextScreen).style.animation = "showScreen 0.5s"
+
+						setTimeout(function () {
+							document.getElementById(currScreen).style.animation = null
+							document.getElementById(currScreen).style.display = "none"
+							document.getElementById(currScreen).style.marginLeft = "0px"
+							document.getElementById(currScreen).style.opacity = "0"
+
+							document.getElementById(nextScreen).style.display = "block"
+							document.getElementById(nextScreen).style.opacity = "1"
+
+							if (nextScreen != "order-for-friends") {
+								document.getElementById("show-order").style.display = "block"
+								document.getElementById("show-order").style.opacity = "1"
+							} else {
+								document.getElementById("hidden-box").style.display = "none"
+								document.getElementById("hidden-box").style.opacity = "0"
+							}
+						}, 500)
+					},
+					goBack: function () {
+						var { screenstate } = this
+						var currIndex = this.screens.indexOf(screenstate)
+						var backIndex = currIndex - 1
+						var currScreen = this.screens[currIndex]
+						var backScreen = this.screens[backIndex]
+
+						this.screenstate = backScreen
+
+						document.getElementById(backScreen).style.animation = "backSwipe 0.5s"
+						document.getElementById(currScreen).style.animation = "backScreen 0.5s"
+
+						setTimeout(function () {
+							document.getElementById(backScreen).style.display = "block"
+							document.getElementById(backScreen).style.opacity = "1"
+							document.getElementById(backScreen).style.marginLeft = "0px"
+							document.getElementById(currScreen).style.display = "none"
+							document.getElementById(currScreen).style.opacity = "0"
+
+							if (backScreen != "order-for-friends") {
+								document.getElementById("show-order").style.display = "block"
+								document.getElementById("show-order").style.opacity = "1"
+							}
+						}, 500)
+					},
+					openOrder: function () {
+						var { screenstate, orders } = this
+						var items = orders.items, cost = 0
+
+						items.forEach(function (item) {
+							cost += parseFloat(item.price)
+						})
+
+						this.orders.cost = cost.toFixed(2)
+
+						document.getElementById("hidden-box").style.display = "block"
+						document.getElementById("hidden-box").style.animation = "showHiddenBox 0.5s"
+						document.getElementById(screenstate + "-inner").style.animation = "showInnerBox 0.5s"
+
+						setTimeout(function () {
+							document.getElementById("hidden-box").style.marginTop = "-500px"
+							document.getElementById("hidden-box").style.opacity = "1"
+							document.getElementById(screenstate + "-inner").style.opacity = "0"
+						}, 500)
+					},
+					hideHiddenBox: function (event) {
+						var { screenstate } = this
+
+						if (event && event.target.id == "hidden-box") {
+							document.getElementById("hidden-box").style.animation = "hideHiddenBox 0.5s"
+							document.getElementById(screenstate + "-inner").style.opacity = "1"
+
+							setTimeout(function () {
+								document.getElementById("hidden-box").style.display = "none"
+								document.getElementById("hidden-box").style.marginTop = "0px"
+								document.getElementById("hidden-box").style.opacity = "0"
+								
+							}, 500)
+						}
+					},
+					seeItem: function (menu, id) {
+						var { rstr_info, item_info } = this
+						var item = rstr_info.items[menu + 's'][id]
+						var { name, samplephoto, price } = item
+
+						item_info.name = name
+						item_info.samplephoto
+						item_info.price = price
+
+						this.item_info = item_info
+						this.swipeScreen()
+					},
+					selectFriend: function (friend) {
+						var { friends } = this
+						var { id, name } = friend
+
+						if (id == friends.selected.id) {
+							this.friends.selected.id = -1
+							this.friends.selected.name = ""
+						} else {
+							this.friends.selected.id = id
+							this.friends.selected.name = name
+						}
+					},
+					addToFriendOrders: function (id) {
+						var { orders, friends } = this
+						var { friendslist, selected } = friends
+						var items = orders.items, orders = friendslist[selected.id].orders
+
+						if (orders.indexOf(id) > -1) {
+							orders.splice(orders.indexOf(id), 1)
+						} else {
+							orders.push(id)
+						}
+
+						friendslist[selected.id].orders = orders
+						friends.friendslist = friendslist
+
+						this.friends = friends
+					},
+					orderItem: function () {
+						var { item_info, orders } = this
+						var moreinfos = item_info.moreinfos
+						var choices = item_info.addons.choices
+						var items = orders.items
+						var last_item = items.length - 1
+						var infos = [], info = {
+							id: last_item + 1,
+							samplephoto: item_info.samplephoto,
+							infos: [],
+							price: item_info.price
+						}, value, type = ''
+
+						infos.push({ name: '', info: item_info.name })
+
+						choices.forEach(function (choice) {
+							if (choice.selected) {
+								value = choice.selected
+							} else if (choice.amount) {
+								value = choice.amount
+							} else if (choice.percentage) {
+								value = choice.percentage
+								type = 'percentage'
+							}
+
+							infos.push({
+								name: choice.name, 
+								info: value, 
+								type: type
+							})
+						})
+
+						info.infos = infos
+
+						this.orders.items.push(info)
+
+						document.getElementById("rstr-info").style.display = "block"
+						document.getElementById("rstr-info").style.opacity = "1"
+						document.getElementById("item-info").style.animation = "fadeItemInfoAway 1s"
+
+						setTimeout(function () {
+							document.getElementById("item-info").style.animation = ""
+							document.getElementById("item-info").style.display = "none"
+							document.getElementById("item-info").style.opacity = "0"
+							document.getElementById("show-order").style.display = "block"
+							document.getElementById("show-order").style.opacity = "1"
+						}, 1000)
+					},
+					display: function (items) {
+						var row = []
+						var new_items = []
+
+						items.forEach(function (item, index) {
+							row.push(item)
+
+							if (row.length == 3 || items.length - 1 == index) {
+								new_items.push(row)
+								row = []
+							}
+						})
+
+						return new_items
+					}
+				}
+			})
+		</script>
+	</body>
+</html>
